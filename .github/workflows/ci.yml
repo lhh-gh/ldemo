@@ -59,16 +59,28 @@ jobs:
     needs: test-and-build
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     environment: testing
+    env:
+      TEST_SERVER_HOST: ${{ secrets.TEST_SERVER_HOST }}
+      TEST_SERVER_USER: ${{ secrets.TEST_SERVER_USER }}
+      TEST_SERVER_SSH_KEY: ${{ secrets.TEST_SERVER_SSH_KEY }}
+      TEST_DEPLOY_PATH: ${{ secrets.TEST_DEPLOY_PATH }}
 
     steps:
+      - name: Validate deployment secrets
+        run: |
+          test -n "$TEST_SERVER_HOST" || (echo "Missing secret: TEST_SERVER_HOST" && exit 1)
+          test -n "$TEST_SERVER_USER" || (echo "Missing secret: TEST_SERVER_USER" && exit 1)
+          test -n "$TEST_SERVER_SSH_KEY" || (echo "Missing secret: TEST_SERVER_SSH_KEY" && exit 1)
+          test -n "$TEST_DEPLOY_PATH" || (echo "Missing secret: TEST_DEPLOY_PATH" && exit 1)
+
       - name: Deploy to testing
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.TEST_SERVER_HOST }}
-          username: ${{ secrets.TEST_SERVER_USER }}
-          key: ${{ secrets.TEST_SERVER_SSH_KEY }}
+          host: ${{ env.TEST_SERVER_HOST }}
+          username: ${{ env.TEST_SERVER_USER }}
+          key: ${{ env.TEST_SERVER_SSH_KEY }}
           script: |
-            cd "${{ secrets.TEST_DEPLOY_PATH }}"
+            cd "${{ env.TEST_DEPLOY_PATH }}"
             git fetch --prune
             git reset --hard origin/master
             composer install --no-interaction --prefer-dist --no-dev --optimize-autoloader
